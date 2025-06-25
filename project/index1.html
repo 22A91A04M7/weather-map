@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>🌤️Weather Dashboard</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(to right, #83a4d4, #b6fbff);
+      min-height: 100vh;
+    }
+
+    .navbar {
+      background-color: #ffffffcc;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 15px 40px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+
+    .logo {
+      font-size: 1.5rem;
+      font-weight: bold;
+      color: #333;
+    }
+
+    .container {
+      max-width: 600px;
+      margin: 40px auto;
+      text-align: center;
+      padding: 20px;
+    }
+
+    h1 {
+      margin-bottom: 20px;
+      color: #fff;
+    }
+
+    select, input, button {
+      padding: 10px;
+      font-size: 1rem;
+      margin: 5px;
+    }
+
+    input {
+      width: 60%;
+      border: none;
+      border-radius: 5px;
+    }
+
+    button {
+      background-color: #0077b6;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #023e8a;
+    }
+
+    .weather-card {
+      background-color: #ffffffcc;
+      border-radius: 16px;
+      padding: 25px 35px;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+      margin-top: 20px;
+      display: none;
+    }
+
+    .location { font-size: 1.2rem; font-weight: bold; color: #444; }
+    .temperature { font-size: 3rem; font-weight: bold; color: #1e90ff; margin: 10px 0; }
+    .description { font-size: 1.1rem; color: #666; margin-bottom: 20px; }
+
+    .details {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .detail-item {
+      background: #f7f7f7;
+      padding: 10px 15px;
+      border-radius: 10px;
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.95rem;
+      color: #333;
+    }
+  </style>
+</head>
+<body>
+  <nav class="navbar">
+    <div class="logo">🌤️WeatherDashboard</div>
+  </nav>
+
+  <div class="container">
+    <h1 style="color:#0d47a1;">Search Weather</h1>
+    
+    <!-- State Dropdown -->
+    <select id="stateSelect" onchange="fetchWeatherByState()">
+      <option value="">-- Select State --</option>
+      <option value="Andhra Pradesh">Andhra Pradesh</option>
+      <option value="Arunachal Pradesh">Arunachal Pradesh</option>
+      <option value="Assam">Assam</option>
+      <option value="Bihar">Bihar</option>
+      <option value="Chhattisgarh">Chhattisgarh</option>
+      <option value="Goa">Goa</option>
+      <option value="Gujarat">Gujarat</option>
+      <option value="Haryana">Haryana</option>
+      <option value="Himachal Pradesh">Himachal Pradesh</option>
+      <option value="Jharkhand">Jharkhand</option>
+      <option value="Karnataka">Karnataka</option>
+      <option value="Kerala">Kerala</option>
+      <option value="Madhya Pradesh">Madhya Pradesh</option>
+      <option value="Maharashtra">Maharashtra</option>
+      <option value="Manipur">Manipur</option>
+      <option value="Meghalaya">Meghalaya</option>
+      <option value="Mizoram">Mizoram</option>
+      <option value="Nagaland">Nagaland</option>
+      <option value="Odisha">Odisha</option>
+      <option value="Punjab">Punjab</option>
+      <option value="Rajasthan">Rajasthan</option>
+      <option value="Sikkim">Sikkim</option>
+      <option value="Tamil Nadu">Tamil Nadu</option>
+      <option value="Telangana">Telangana</option>
+      <option value="Tripura">Tripura</option>
+      <option value="Uttar Pradesh">Uttar Pradesh</option>
+      <option value="Uttarakhand">Uttarakhand</option>
+      <option value="West Bengal">West Bengal</option>
+    </select>
+
+    <!-- City Search -->
+    <form id="weatherForm">
+      <input type="text" id="cityInput" placeholder="Or enter city name..." />
+      <button type="submit">Search</button>
+    </form>
+
+    <div class="weather-card" id="weatherCard">
+      <div class="location" id="location"></div>
+      <div class="temperature" id="temperature"></div>
+      <div class="description" id="description"></div>
+      <div class="details">
+        <div class="detail-item">
+          <span>💧 Humidity</span>
+          <strong id="humidity"></strong>
+        </div>
+        <div class="detail-item">
+          <span>🌬️ Wind</span>
+          <strong id="wind"></strong>
+        </div>
+        <div class="detail-item">
+          <span>📅 Date</span>
+          <strong id="date"></strong>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API_KEY = "36c832b8b21958abda574473f32f7644"; // Replace with your actual OpenWeatherMap API key
+
+    const form = document.getElementById("weatherForm");
+    const cityInput = document.getElementById("cityInput");
+    const stateSelect = document.getElementById("stateSelect");
+
+    const locationEl = document.getElementById("location");
+    const temperatureEl = document.getElementById("temperature");
+    const descriptionEl = document.getElementById("description");
+    const humidityEl = document.getElementById("humidity");
+    const windEl = document.getElementById("wind");
+    const dateEl = document.getElementById("date");
+    const weatherCard = document.getElementById("weatherCard");
+
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const city = cityInput.value.trim();
+      if (city) fetchWeather(city);
+    });
+
+    function fetchWeatherByState() {
+      const state = stateSelect.value;
+      if (state) fetchWeather(state);
+    }
+
+    async function fetchWeather(city) {
+      try {
+        const res = await fetch(`https://api.openweathermap.org/data/2.5/weather?q=${city},India&appid=${API_KEY}&units=metric`);
+        const data = await res.json();
+
+        if (data.cod === 200) {
+          locationEl.textContent = `${data.name}, ${data.sys.country}`;
+          temperatureEl.textContent = `${Math.round(data.main.temp)}°C`;
+          descriptionEl.textContent = data.weather[0].description;
+          humidityEl.textContent = `${data.main.humidity}%`;
+          windEl.textContent = `${data.wind.speed} km/h`;
+
+          const now = new Date();
+          dateEl.textContent = now.toLocaleDateString('en-IN', {
+            day: 'numeric', month: 'long', year: 'numeric'
+          });
+
+          weatherCard.style.display = "block";
+        } else {
+          alert("City not found.");
+          weatherCard.style.display = "none";
+        }
+      } catch (err) {
+        alert("Failed to fetch data.");
+        console.error(err);
+      }
+    }
+
+    // Load default city
+    window.onload = () => fetchWeather("Hyderabad");
+  </script>
+</body>
+</html>
+
+
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Weather Dashboard</title>
+
+  <!-- ──  CSS  ─────────────────────────────────────────────── -->
+  <style>
+    * { box-sizing: border-box; }
+
+    body{
+      margin:0;
+      padding:20px;
+      font-family:Arial, sans-serif;
+      background:#e0f7fa;
+    }
+
+    h1{
+      margin:0 0 24px;
+      text-align:center;
+      color:#ffffff;
+    }
+
+    select{
+      font-size:16px;
+      padding:10px 14px;
+      margin-bottom:24px;
+      border:1px solid #aaa;
+      border-radius:4px;
+    }
+
+    .weather-container{
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+    }
+
+    .card{
+      width:90%;
+      max-width:640px;
+      background:#fff;
+      padding:20px;
+      border-radius:12px;
+      box-shadow:0 2px 10px rgba(0,0,0,.1);
+      margin-bottom:24px;
+    }
+
+    .forecast{
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+      justify-content:space-between;
+    }
+
+    .forecast-day{
+      flex:1 1 100px;
+      background:#b2ebf2;
+      border-radius:10px;
+      padding:12px 8px;
+      text-align:center;
+    }
+  </style>
+</head>
+
+<body>
+  <h1 style="color:#0d47a1;">Weather Forecast Dashboard</h1>
+
+  <div class="weather-container">
+    <select id="capitalSelect">
+      <!-- value = pure city  | label = State (City) -->
+      <option value="Amaravati">Andhra Pradesh (Amaravati)</option>
+      <option value="Itanagar">Arunachal Pradesh (Itanagar)</option>
+      <option value="Dispur">Assam (Dispur)</option>
+      <option value="Patna">Bihar (Patna)</option>
+      <option value="Raipur">Chhattisgarh (Raipur)</option>
+      <option value="Gandhinagar">Gujarat (Gandhinagar)</option>
+      <option value="Chandigarh">Haryana (Chandigarh)</option>
+      <option value="Shimla">Himachal Pradesh (Shimla)</option>
+      <option value="Ranchi">Jharkhand (Ranchi)</option>
+      <option value="Bengaluru">Karnataka (Bengaluru)</option>
+      <option value="Thiruvananthapuram">Kerala (Thiruvananthapuram)</option>
+      <option value="Bhopal">Madhya Pradesh (Bhopal)</option>
+      <option value="Mumbai">Maharashtra (Mumbai)</option>
+      <option value="Imphal">Manipur (Imphal)</option>
+      <option value="Shillong">Meghalaya (Shillong)</option>
+      <option value="Aizawl">Mizoram (Aizawl)</option>
+      <option value="Kohima">Nagaland (Kohima)</option>
+      <option value="Bhubaneswar">Odisha (Bhubaneswar)</option>
+      <option value="Jaipur">Rajasthan (Jaipur)</option>
+      <option value="Gangtok">Sikkim (Gangtok)</option>
+      <option value="Chennai">Tamil Nadu (Chennai)</option>
+      <option value="Hyderabad">Telangana (Hyderabad)</option>
+      <option value="Agartala">Tripura (Agartala)</option>
+      <option value="Lucknow">Uttar Pradesh (Lucknow)</option>
+      <option value="Dehradun">Uttarakhand (Dehradun)</option>
+      <option value="Kolkata">West Bengal (Kolkata)</option>
+    </select>
+
+    <div class="card" id="currentWeather">Loading current weather…</div>
+    <div class="card" id="forecast">Loading forecast…</div>
+  </div>
+
+  <!-- ──  JavaScript  ─────────────────────────────────────────── -->
+  <script>
+    const apiKey = "36c832b8b21958abda574473f32f7644";   //  ←  paste your OWM key
+
+    const select   = document.getElementById("capitalSelect");
+    const current  = document.getElementById("currentWeather");
+    const forecast = document.getElementById("forecast");
+
+    select.addEventListener("change", updateWeather);
+    updateWeather();                  // first load
+
+    async function updateWeather(){
+      const city = select.value;      // guaranteed not empty now
+      try{
+        // 1️⃣  Geocoding
+        const geoURL = `https://api.openweathermap.org/geo/1.0/direct?q=${encodeURIComponent(city)}&limit=1&appid=${apiKey}`;
+        const geoRes = await fetch(geoURL);
+        const geo    = await geoRes.json();
+        if(!geo.length) throw new Error(`Could not geocode ${city}`);
+
+        const {lat, lon} = geo[0];
+
+        // 2️⃣  Weather + forecast
+        const params = `lat=${lat}&lon=${lon}&units=metric&appid=${apiKey}`;
+        const [wRes, fRes] = await Promise.all([
+          fetch(`https://api.openweathermap.org/data/2.5/weather?${params}`),
+          fetch(`https://api.openweathermap.org/data/2.5/forecast?${params}&cnt=40`)
+        ]);
+
+        if(!wRes.ok || !fRes.ok){
+          const msg = await wRes.text();
+          throw new Error(`OpenWeather error ${wRes.status}: ${msg}`);
+        }
+
+        const wData = await wRes.json();
+        const fData = await fRes.json();
+        renderCurrent(wData, city);
+        renderForecast(fData.list);
+
+      }catch(err){
+        console.error(err);
+        current.innerHTML  = `<strong>Failed to load data:</strong><br>${err.message}`;
+        forecast.innerHTML = "";
+      }
+    }
+
+    function renderCurrent(d, city){
+      current.innerHTML = `
+        <h3>${city}</h3>
+        <p><strong>Temp:</strong> ${d.main.temp} °C</p>
+        <p><strong>Humidity:</strong> ${d.main.humidity}%</p>
+        <p><strong>Conditions:</strong> ${d.weather[0].main}</p>
+      `;
+    }
+
+    function renderForecast(list){
+      const byDay = {};
+      list.forEach(item=>{
+        const day = item.dt_txt.slice(0,10);
+        if(!byDay[day]) byDay[day] = item;
+      });
+
+      forecast.innerHTML =
+        `<h3>5-Day Forecast</h3><div class="forecast">` +
+        Object.values(byDay).slice(0,5).map(d=>`
+          <div class="forecast-day">
+            <p><strong>${d.dt_txt.slice(0,10)}</strong></p>
+            <p>${d.main.temp} °C</p>
+            <p>${d.weather[0].main}</p>
+          </div>`).join("") +
+        `</div>`;
+    }
+  </script>
+</body>
+</html>
