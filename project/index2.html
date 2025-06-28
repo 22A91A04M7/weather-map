@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Live Weather Map (MSN-style)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- Leaflet -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <!-- Leaflet-Control-Geocoder -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
+  <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
+
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    #map{height:100vh;width:100vw}
+    .legend{
+      position:fixed;bottom:10px;left:10px;z-index:1000;
+      background:#fff;border-radius:6px;padding:8px;font:12px/1.4 sans-serif;
+      box-shadow:0 0 8px rgba(0,0,0,.25)
+    }
+    .legend img{width:180px;display:block}
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <div class="legend">
+    <b>Temperature (°C)</b><br>
+    <img src="https://raw.githubusercontent.com/visualcrossing/WeatherColors/main/temp_legend.png"
+         alt="Temperature legend">
+  </div>
+
+  <script>
+    /* ---------------------------------------------------
+       CONFIG
+    --------------------------------------------------- */
+    const OWM_KEY = '36c832b8b21958abda574473f32f7644';
+
+    /* ---------------------------------------------------
+       MAP INITIALISATION
+    --------------------------------------------------- */
+    const map = L.map('map').setView([20, 80], 5);
+
+    /* Base layer – HOT style from OSM France */
+    L.tileLayer('https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors',
+      maxZoom: 19
+    }).addTo(map);
+
+    /* Weather overlays */
+    const tempLayer = L.tileLayer(
+      `https://tile.openweathermap.org/map/temp_new/{z}/{x}/{y}.png?appid=${OWM_KEY}`,
+      {opacity:0.6}
+    ).addTo(map);
+
+    const windLayer = L.tileLayer(
+      `https://tile.openweathermap.org/map/wind_new/{z}/{x}/{y}.png?appid=${OWM_KEY}`,
+      {opacity:0.5}
+    ).addTo(map);
+
+    /* Search bar */
+    L.Control.geocoder({defaultMarkGeocode:false})
+      .on('markgeocode', e => {
+        const c = e.geocode.center;
+        map.setView(c, 8);
+        showWeatherPopup(c);
+      })
+      .addTo(map);
+
+    /* Click handler */
+    map.on('click', e => showWeatherPopup(e.latlng));
+
+    /* Popup function */
+    async function showWeatherPopup(latlng){
+      const {lat,lng} = latlng;
+      const url = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lng}&units=metric&appid=${OWM_KEY}`;
+
+      try{
+        const res  = await fetch(url);
+        const data = await res.json();
+        if(res.status!==200 || data.cod!==200){
+          throw new Error('Weather unavailable');
+        }
+
+        const html = `
+          <b>${data.name || 'Selected location'}</b><br>
+          🌡 Temperature: ${data.main.temp}&nbsp;°C<br>
+          💧 Humidity: ${data.main.humidity}&nbsp;%<br>
+          🌬 Wind: ${data.wind.speed}&nbsp;m/s ${data.wind?.gust ? `(gust ${data.wind.gust} m/s)` : ''}<br>
+          🧭 Pressure: ${data.main.pressure}&nbsp;hPa
+        `;
+
+        L.popup({offset:[0,-10]})
+          .setLatLng(latlng)
+          .setContent(html)
+          .openOn(map);
+
+      }catch(err){
+        console.error(err);
+        alert('Could not load weather data here.');
+      }
+    }
+  </script>
+</body>
+</html>
